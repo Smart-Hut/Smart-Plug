@@ -21,3 +21,9 @@ Used for energy monitoring
 | GPIO20 | Button |
 | GPIO6 | LED |
 | GPIO4 | Relay |
+
+### Tasmota Template
+
+```
+{"NAME":"Smart Hut PM","GPIO":[0,0,0,2656,224,2624,320,2720,0,0,0,0,0,0,0,0,0,0,0,0,32,1],"FLAG":0,"BASE":1}
+```

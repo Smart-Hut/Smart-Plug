@@ -1,7 +1,7 @@
 substitutions:
-  voltage_divider: "787.8088303846923"
-  current_resistor: "0.0009130339764619374"
-  current_multiply: "0.41146559390160453"
+  voltage_divider: "1446.0976136351096"
+  current_resistor: "0.0006145187444662681"
+  current_multiply: "1.0"
 
 esphome:
   name: smarthutplug
@@ -10,21 +10,24 @@ esphome:
   project:
     name: smarthut.esp32c3_plug
     version: "1.0.0"
+  platformio_options:
+    board_build.flash_mode: dio
 
 dashboard_import:
   package_import_url: github://Smart-Hut/Smart-Plug/ESPC2-02.yaml@v1.2.1
   import_full_config: false # or true
 
 esp32:
-  board: esp32dev
-  flash_size: 2MB
+  board: esp32-c3-devkitm-1
+  flash_size: 4MB
   variant: esp32c3
-
+  framework:
+    type: esp-idf
 
 # Enable logging
 logger:
 
-# Enable Home Assistant API
+#Enable Home Assistant API
 api:
   password: ""
 
@@ -44,7 +47,9 @@ web_server:
 sensor:
   - platform: hlw8012
     model: BL0937
-    sel_pin: GPIO5
+    sel_pin:
+      number: GPIO5
+      inverted: true
     cf_pin: GPIO7
     cf1_pin: GPIO3
     voltage_divider: ${voltage_divider}
@@ -67,7 +72,7 @@ binary_sensor:
       number: GPIO20
       inverted: true
     name: button
-    id: button
+    id: power_button
     on_press:
       then:
       - lambda: !lambda |-
@@ -81,6 +86,17 @@ light:
     pin: 
       number: GPIO6
       inverted: true
+  - platform: binary
+    id: led
+    name: "LED 2"
+    output: gpio_led
+
+output:
+  - platform: gpio
+    pin:
+      number: GPIO1
+      inverted: true
+    id: gpio_led
 
 switch:
   - platform: gpio
@@ -93,3 +109,9 @@ switch:
     on_turn_off:
       then:
       - light.turn_off: wifi_light
+
+button:
+  - platform: restart
+    name: Restart
+  - platform: factory_reset
+    name: Restart with Factory Default Settings
