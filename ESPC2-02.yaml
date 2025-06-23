@@ -12,6 +12,8 @@ esphome:
     version: "1.0.0"
   platformio_options:
     board_build.flash_mode: dio
+  on_boot:
+    - switch.turn_on: relay
 
 dashboard_import:
   package_import_url: github://Smart-Hut/Smart-Plug/ESPC2-02.yaml@v1.2.1
