@@ -20,6 +20,26 @@ globals:
     type: int
     restore_value: yes
     initial_value: '0'
+  - id: local_button_lock_state
+    type: bool
+    restore_value: yes
+    initial_value: 'false'
+  - id: standby_killer_enabled_state
+    type: bool
+    restore_value: yes
+    initial_value: 'false'
+  - id: appliance_detection_enabled_state
+    type: bool
+    restore_value: yes
+    initial_value: 'false'
+  - id: appliance_has_run
+    type: bool
+    restore_value: no
+    initial_value: 'false'
+  - id: appliance_finished_state
+    type: bool
+    restore_value: no
+    initial_value: 'false'
 
 esphome:
   name: smarthutplug
@@ -31,6 +51,8 @@ esphome:
   platformio_options:
     board_build.flash_mode: dio
   on_boot:
+    - delay: !lambda |-
+        return (uint32_t) (id(power_restore_delay).state * 1000);
     - lambda: |-
         if(id(relay_restore_mode) == 0){
           id(relay).turn_off();
@@ -169,6 +191,34 @@ sensor:
     filters:
       - multiply: 0.001
 
+  - platform: template
+    name: "Today Cost"
+    id: today_cost_sensor
+    lambda: |-
+      if (!id(daily_energy_sensor).has_state()) {
+        return NAN;
+      }
+      return id(daily_energy_sensor).state * id(electricity_rate).state;
+    unit_of_measurement: GBP
+    device_class: monetary
+    state_class: measurement
+    accuracy_decimals: 2
+    update_interval: 60s
+
+  - platform: template
+    name: "Lifetime Cost"
+    id: lifetime_cost_sensor
+    lambda: |-
+      if (!id(lifetime_energy_sensor).has_state()) {
+        return NAN;
+      }
+      return id(lifetime_energy_sensor).state * id(electricity_rate).state;
+    unit_of_measurement: GBP
+    device_class: monetary
+    state_class: measurement
+    accuracy_decimals: 2
+    update_interval: 60s
+
   - platform: wifi_signal
     name: "WiFi Signal"
     id: wifi_signal_sensor
@@ -195,23 +245,38 @@ binary_sensor:
           - ON for at most 500ms
           - OFF for at least 50ms
         then:
-          - select.operation:
-              id: power_loss_select
-              operation: NEXT
-              cycle: true
+          - if:
+              condition:
+                lambda: |-
+                  return !id(local_button_lock_state);
+              then:
+                - select.operation:
+                    id: power_loss_select
+                    operation: NEXT
+                    cycle: true
       - timing:
           - ON for at most 750ms
           - OFF for at least 50ms
         then:
-          - switch.toggle: relay
+          - if:
+              condition:
+                lambda: |-
+                  return !id(local_button_lock_state);
+              then:
+                - switch.toggle: relay
       - timing:
           - ON for 1s to 5s
           - OFF for at least 50ms
         then:
-          - select.operation:
-              id: led_behavior_select
-              operation: NEXT
-              cycle: true
+          - if:
+              condition:
+                lambda: |-
+                  return !id(local_button_lock_state);
+              then:
+                - select.operation:
+                    id: led_behavior_select
+                    operation: NEXT
+                    cycle: true
 
   - platform: template
     name: "Load Detected"
@@ -235,6 +300,20 @@ binary_sensor:
     lambda: |-
       return id(power_sensor).has_state() && id(power_sensor).state >= id(high_power_threshold).state;
     device_class: power
+
+  - platform: template
+    name: "Appliance Running"
+    id: appliance_running
+    lambda: |-
+      return id(appliance_detection_enabled_state) && id(appliance_has_run) && !id(appliance_finished_state);
+    device_class: running
+
+  - platform: template
+    name: "Appliance Finished"
+    id: appliance_finished
+    lambda: |-
+      return id(appliance_detection_enabled_state) && id(appliance_finished_state);
+    device_class: running
 
 text_sensor:
   - platform: wifi_info
@@ -295,7 +374,15 @@ switch:
       - globals.set:
           id: relay_last_state
           value: 'false'
+      - globals.set:
+          id: appliance_has_run
+          value: 'false'
+      - globals.set:
+          id: appliance_finished_state
+          value: 'false'
       - script.stop: auto_off_timer
+      - script.stop: standby_killer_timer
+      - script.stop: appliance_finished_timer
       - script.execute: update_led
 
   - platform: template
@@ -318,10 +405,91 @@ switch:
           value: 'false'
       - script.stop: auto_off_timer
 
+  - platform: template
+    name: "Local Button Lock"
+    id: local_button_lock
+    lambda: |-
+      return id(local_button_lock_state);
+    turn_on_action:
+      - globals.set:
+          id: local_button_lock_state
+          value: 'true'
+    turn_off_action:
+      - globals.set:
+          id: local_button_lock_state
+          value: 'false'
+
+  - platform: template
+    name: "Standby Killer Enabled"
+    id: standby_killer_enabled
+    lambda: |-
+      return id(standby_killer_enabled_state);
+    turn_on_action:
+      - globals.set:
+          id: standby_killer_enabled_state
+          value: 'true'
+    turn_off_action:
+      - globals.set:
+          id: standby_killer_enabled_state
+          value: 'false'
+      - script.stop: standby_killer_timer
+
+  - platform: template
+    name: "Appliance Detection Enabled"
+    id: appliance_detection_enabled
+    lambda: |-
+      return id(appliance_detection_enabled_state);
+    turn_on_action:
+      - globals.set:
+          id: appliance_detection_enabled_state
+          value: 'true'
+      - globals.set:
+          id: appliance_has_run
+          value: 'false'
+      - globals.set:
+          id: appliance_finished_state
+          value: 'false'
+      - script.stop: appliance_finished_timer
+    turn_off_action:
+      - globals.set:
+          id: appliance_detection_enabled_state
+          value: 'false'
+      - globals.set:
+          id: appliance_has_run
+          value: 'false'
+      - globals.set:
+          id: appliance_finished_state
+          value: 'false'
+      - script.stop: appliance_finished_timer
+
 number:
+  - platform: template
+    name: "Power Restore Delay"
+    id: power_restore_delay
+    optimistic: true
+    restore_value: true
+    initial_value: 0
+    min_value: 0
+    max_value: 300
+    step: 1
+    unit_of_measurement: s
+    mode: box
+
   - platform: template
     name: "Auto Off Minutes"
     id: auto_off_minutes
+    optimistic: true
+    restore_value: true
+    initial_value: 30
+    min_value: 1
+    max_value: 1440
+    step: 1
+    unit_of_measurement: min
+    mode: box
+
+  - platform: template
+    name: "Standby Killer Delay"
+    id: standby_killer_delay
     optimistic: true
     restore_value: true
     initial_value: 30
@@ -341,6 +509,54 @@ number:
     max_value: 500
     step: 0.1
     unit_of_measurement: W
+    mode: box
+
+  - platform: template
+    name: "Appliance Running Threshold"
+    id: appliance_running_threshold
+    optimistic: true
+    restore_value: true
+    initial_value: 20
+    min_value: 1
+    max_value: 1000
+    step: 1
+    unit_of_measurement: W
+    mode: box
+
+  - platform: template
+    name: "Appliance Finished Threshold"
+    id: appliance_finished_threshold
+    optimistic: true
+    restore_value: true
+    initial_value: 5
+    min_value: 0.1
+    max_value: 500
+    step: 0.1
+    unit_of_measurement: W
+    mode: box
+
+  - platform: template
+    name: "Appliance Finished Delay"
+    id: appliance_finished_delay
+    optimistic: true
+    restore_value: true
+    initial_value: 5
+    min_value: 1
+    max_value: 120
+    step: 1
+    unit_of_measurement: min
+    mode: box
+
+  - platform: template
+    name: "Electricity Rate"
+    id: electricity_rate
+    optimistic: true
+    restore_value: true
+    initial_value: 0.30
+    min_value: 0
+    max_value: 2
+    step: 0.01
+    unit_of_measurement: GBP/kWh
     mode: box
 
   - platform: template
@@ -474,6 +690,40 @@ script:
           then:
             - switch.turn_off: relay
 
+  - id: standby_killer_timer
+    mode: single
+    then:
+      - delay: !lambda |-
+          return (uint32_t) (id(standby_killer_delay).state * 60000);
+      - if:
+          condition:
+            and:
+              - switch.is_on: relay
+              - lambda: |-
+                  return id(standby_killer_enabled_state)
+                    && id(power_sensor).has_state()
+                    && id(power_sensor).state > 0.1
+                    && id(power_sensor).state <= id(standby_threshold).state;
+          then:
+            - switch.turn_off: relay
+
+  - id: appliance_finished_timer
+    mode: single
+    then:
+      - delay: !lambda |-
+          return (uint32_t) (id(appliance_finished_delay).state * 60000);
+      - if:
+          condition:
+            lambda: |-
+              return id(appliance_detection_enabled_state)
+                && id(appliance_has_run)
+                && id(power_sensor).has_state()
+                && id(power_sensor).state <= id(appliance_finished_threshold).state;
+          then:
+            - globals.set:
+                id: appliance_finished_state
+                value: 'true'
+
   - id: update_led
     mode: restart
     then:
@@ -502,6 +752,50 @@ script:
           then:
             - light.turn_on: wifi_light
 
+interval:
+  - interval: 15s
+    then:
+      - if:
+          condition:
+            lambda: |-
+              return id(standby_killer_enabled_state)
+                && id(relay).state
+                && id(power_sensor).has_state()
+                && id(power_sensor).state > 0.1
+                && id(power_sensor).state <= id(standby_threshold).state;
+          then:
+            - script.execute: standby_killer_timer
+          else:
+            - script.stop: standby_killer_timer
+      - if:
+          condition:
+            lambda: |-
+              return id(appliance_detection_enabled_state)
+                && id(relay).state
+                && id(power_sensor).has_state()
+                && id(power_sensor).state >= id(appliance_running_threshold).state;
+          then:
+            - globals.set:
+                id: appliance_has_run
+                value: 'true'
+            - globals.set:
+                id: appliance_finished_state
+                value: 'false'
+            - script.stop: appliance_finished_timer
+          else:
+            - if:
+                condition:
+                  lambda: |-
+                    return id(appliance_detection_enabled_state)
+                      && id(relay).state
+                      && id(appliance_has_run)
+                      && !id(appliance_finished_state)
+                      && id(power_sensor).has_state()
+                      && id(power_sensor).state <= id(appliance_finished_threshold).state;
+                then:
+                  - script.execute: appliance_finished_timer
+                else:
+                  - script.stop: appliance_finished_timer
 
 
 button:
