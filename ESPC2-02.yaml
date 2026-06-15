@@ -77,7 +77,7 @@ esphome:
   
 
 dashboard_import:
-  package_import_url: github://Smart-Hut/Smart-Plug/ESPC2-02.yaml@v1.3.0
+  package_import_url: github://Smart-Hut/Smart-Plug/ESPC2-02.yaml@v2.0.0
   import_full_config: false # or true
 
 esp32:
