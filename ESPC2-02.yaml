@@ -47,7 +47,7 @@ esphome:
   name_add_mac_suffix: true
   project:
     name: smarthut.esp32c3_plug
-    version: "1.3.0"
+    version: "2.0.0"
   platformio_options:
     board_build.flash_mode: dio
   on_boot:
