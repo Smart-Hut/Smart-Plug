@@ -47,7 +47,7 @@ esphome:
   name_add_mac_suffix: true
   project:
     name: smarthut.esp32c3_plug
-    version: "2.0.0"
+    version: "2.1.0"
   platformio_options:
     board_build.flash_mode: dio
   on_boot:
@@ -77,7 +77,7 @@ esphome:
   
 
 dashboard_import:
-  package_import_url: github://Smart-Hut/Smart-Plug/ESPC2-02.yaml@v2.0.0
+  package_import_url: github://Smart-Hut/Smart-Plug/ESPC2-02.yaml@v2.1.0
   import_full_config: false # or true
 
 esp32:
@@ -103,6 +103,9 @@ wifi:
 
 esp32_improv:
   authorizer: none
+
+bluetooth_proxy:
+  active: true
 
 captive_portal:
 
