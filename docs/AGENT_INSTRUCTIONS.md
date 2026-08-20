@@ -7,6 +7,8 @@ These instructions are for AI agents (Gemini, ChatGPT, Claude, etc.) helping a n
 
 **Important:** These plugs do not have a USB port for flashing. All updates are done over the air (OTA) via Wi-Fi.
 
+**Note:** Home Assistant does not automatically prompt for ESPHome firmware updates. The user must either check the ESPHome dashboard manually, or install the ESPHome Update Manager add-on for automatic notifications and updates.
+
 ## Before You Start
 
 Confirm the user has:
@@ -88,6 +90,49 @@ For users who run ESPHome as a standalone dashboard (not through Home Assistant)
 ### Step 4: Verify
 
 1. Ask the user to check the **ESPHome Version** diagnostic entity in Home Assistant or the plug's web server.
+2. It should show `2.1.0`.
+
+## Option C: Set Up Automatic Updates with ESPHome Update Manager
+
+For users who want Home Assistant to notify them of future updates and optionally install them automatically. This is a one-time setup that makes all future updates easier.
+
+### Step 1: Install HACS (If Not Already Installed)
+
+If the user does not have HACS (Home Assistant Community Store):
+
+1. Ask them to open a browser and go to https://my.home-assistant.io/redirect/hacs_install/
+2. Follow the on-screen instructions to install HACS.
+3. Restart Home Assistant when prompted.
+
+### Step 2: Install the ESPHome Update Manager
+
+1. In Home Assistant, go to **HACS** > **Integrations**.
+2. Click the **search** icon and type `ESPHome Update Manager`.
+3. Click on **ESPHome Update Manager** and then click **Download**.
+4. Restart Home Assistant when prompted.
+
+### Step 3: Add the Integration
+
+1. After restart, go to **Settings** > **Devices & Services** > **Add Integration**.
+2. Search for **ESPHome Update Manager**.
+3. Click **Submit** to add it with default settings.
+4. The integration will automatically detect all ESPHome devices.
+
+### Step 4: Enable Notifications
+
+1. Go to **Settings** > **Devices & Services** > **ESPHome Update Manager**.
+2. Make sure the update entities are enabled for the plug.
+3. The user will now receive a persistent notification in Home Assistant when a new firmware version is available.
+
+### Step 5: Update the Plug
+
+1. When a notification appears, the user can go to **Settings** > **Devices & Services** and find the plug with an available update.
+2. Click **Install** to update wirelessly.
+3. Alternatively, the integration can be configured to auto-install updates (see the integration's settings for auto-install options).
+
+### Step 6: Verify
+
+1. After the update completes, check the **ESPHome Version** diagnostic entity.
 2. It should show `2.1.0`.
 
 ## Troubleshooting
