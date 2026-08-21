@@ -33,7 +33,7 @@ Main features:
 The easiest route is to add the device through ESPHome in Home Assistant using this package URL:
 
 ```text
-github://Smart-Hut/Smart-Plug/ESPC2-02.yaml@v2.0.0
+github://Smart-Hut/Smart-Plug/ESPC2-02.yaml@v2.1.0
 ```
 
 If you are importing this package into your own config, ESPHome will pull in the device settings from this repository.
